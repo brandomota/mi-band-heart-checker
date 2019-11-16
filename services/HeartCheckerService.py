@@ -1,13 +1,11 @@
-from PyQt5.QtWidgets import QGridLayout, QWidget
-
+from .QueriesService import QueriesService
 
 class HeartCheckerService:
     def __init__(self):
-        pass
+        self.service = QueriesService()
 
-    def open_configure_smartband_view(self,parent):
-        window_configure_smartband = QWidget(parent=parent)
-        window_configure_smartband.setWindowTitle("Configurar Pulseira")
-        layout = QGridLayout()
-        window_configure_smartband.show()
-        return window_configure_smartband
+    def save_data(self, mac, name, id=0):
+        self.service.save_smartband_data(mac,name, id)
+
+    def get_config_data(self):
+        return self.service.get_configuration_smartband()

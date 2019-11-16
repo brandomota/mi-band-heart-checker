@@ -61,7 +61,7 @@ class MainWindow(QWidget):
         self.__set_css_padrao_button(button)
         button.setText("Sobre")
         button.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
-        button.clicked.connect(self.__about)
+        button.clicked.connect(self.__open_about)
         return button
 
     def init_window(self):
