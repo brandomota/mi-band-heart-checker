@@ -1,8 +1,8 @@
 from PyQt5.QtCore import QSize, Qt, QMargins
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QToolButton, QGridLayout
-
 from windows.ConfigWindow import ConfigWindow
+from windows.MonitoringWindow import MonitoringWindow
 
 
 class MainWindow(QWidget):
@@ -11,8 +11,16 @@ class MainWindow(QWidget):
         self.config_window = ConfigWindow()
         self.config_window.show()
 
+    def __clean_layout_menu(self):
+        for i in reversed(range(self.layout().count())):
+            self.layout().itemAt(i).widget().setParent(None)
+
     def __init_monitoring(self):
-        pass
+
+        self.__clean_layout_menu()
+        self.monitoring_window = MonitoringWindow()
+        self.monitoring_window.show()
+        self.close()
 
     def __open_configure_core_application(self):
         pass
@@ -70,12 +78,12 @@ class MainWindow(QWidget):
         layout.setColumnStretch(2, 1)
         layout.setContentsMargins(QMargins(39, 1, 4, 1))
         layout.setHorizontalSpacing(40)
-        button_config_smartband = self.__get_button_config_smartband()
+        self.button_config_smartband = self.__get_button_config_smartband()
         button_init_monitoring = self.__get_button_init_monitoring()
         button_configure_application_core = self.__get_button_configure_core_application()
         button_about = self.__get_button_about()
 
-        layout.addWidget(button_config_smartband, 0, 0)
+        layout.addWidget(self.button_config_smartband, 0, 0)
         layout.addWidget(button_init_monitoring, 0, 1)
         layout.addWidget(button_configure_application_core, 2, 0)
         layout.addWidget(button_about, 2, 1)

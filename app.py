@@ -1,5 +1,4 @@
 from PyQt5.QtWidgets import QApplication
-
 from services.QueriesService import QueriesService
 from windows.MainWindow import MainWindow
 

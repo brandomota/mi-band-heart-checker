@@ -26,7 +26,7 @@ class ConfigWindow(QWidget):
         mac = self.input_mac_device.text()
         name = self.input_name_device.text()
         pattern = re.compile("^[a-fA-F0-9:]{17}|[a-fA-F0-9]{12}$")
-        
+
         if pattern.match(mac) != None:
             if self.data_config != None:
                 self.service.save_data(mac, name, self.data_config[0])

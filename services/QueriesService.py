@@ -1,5 +1,4 @@
-import io
-import sqlite3
+import io, sqlite3
 
 class QueriesService():
     def __init__(self):
