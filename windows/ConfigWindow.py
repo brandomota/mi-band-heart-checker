@@ -1,6 +1,6 @@
-from PyQt5.QtCore import Qt, QMargins
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QListWidget, QLineEdit, QToolButton, QMessageBox
+from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QLineEdit, QToolButton, QMessageBox
 import re
 
 from services.HeartCheckerService import HeartCheckerService
@@ -25,9 +25,9 @@ class ConfigWindow(QWidget):
     def __save_data(self):
         mac = self.input_mac_device.text()
         name = self.input_name_device.text()
-        pattern = re.compile("^([0-9A-Fa-f]{2}[:]){5}([0-9A-Fa-f]{2})$")
-
-        if pattern.match(mac) is True:
+        pattern = re.compile("^[a-fA-F0-9:]{17}|[a-fA-F0-9]{12}$")
+        
+        if pattern.match(mac) != None:
             if self.data_config != None:
                 self.service.save_data(mac, name, self.data_config[0])
             else:
@@ -57,6 +57,8 @@ class ConfigWindow(QWidget):
         layout.setContentsMargins(0,0,0,70)
         self.input_mac_device = self.__get_new_input()
         self.input_name_device = self.__get_new_input()
+        self.input_mac_device.setMaxLength(17)
+        self.input_name_device.setMaxLength(50)
 
         if self.data_config != None:
             self.input_mac_device.setText(self.data_config[1])
