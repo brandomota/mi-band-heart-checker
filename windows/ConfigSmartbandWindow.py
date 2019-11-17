@@ -1,14 +1,16 @@
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QLineEdit, QToolButton, QMessageBox
 import re
 
 from services.HeartCheckerService import HeartCheckerService
 
+class ConfigSmartbandWindow(QWidget):
 
-class ConfigWindow(QWidget):
+    clicked = pyqtSignal()
+
     def __init__(self):
-        super(ConfigWindow, self).__init__()
+        super(ConfigSmartbandWindow, self).__init__()
         self.service = HeartCheckerService()
         self.__init_window()
 
@@ -33,17 +35,15 @@ class ConfigWindow(QWidget):
             else:
                 self.service.save_data(mac, name)
 
-            self.close()
+            self.clicked.emit()
         else:
-            QMessageBox.about(self,"Erro", "O endereço MAC é invalido!")
-
+            QMessageBox.about(self, "Erro", "O endereço MAC é invalido!")
 
     def __get_button_save(self):
         button = QToolButton()
         icon = QIcon("./icons/save.svg")
         button.setText("Salvar")
         button.setIcon(icon)
-
         button.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         button.setStyleSheet("font-size:16px;margin-left:208px;margin-top:10px;")
         button.clicked.connect(self.__save_data)
@@ -54,7 +54,7 @@ class ConfigWindow(QWidget):
         self.setWindowTitle("Configurar Pulseira")
         layout = QVBoxLayout()
         layout.addStretch(1)
-        layout.setContentsMargins(0,0,0,70)
+        layout.setContentsMargins(50, 0, 0, 160)
         self.input_mac_device = self.__get_new_input()
         self.input_name_device = self.__get_new_input()
         self.input_mac_device.setMaxLength(17)
@@ -73,6 +73,5 @@ class ConfigWindow(QWidget):
         layout.addWidget(self.input_name_device)
         layout.addWidget(button_save)
         self.setLayout(layout)
-        self.setMaximumSize(300,300)
-        self.setMinimumSize(300,300)
-
+        self.setMaximumSize(400, 400)
+        self.setMinimumSize(400, 400)

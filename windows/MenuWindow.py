@@ -1,28 +1,27 @@
 from PyQt5.QtCore import QSize, Qt, QMargins, pyqtSignal
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QToolButton, QGridLayout
-from windows.ConfigWindow import ConfigWindow
+from windows.ConfigSmartbandWindow import ConfigSmartbandWindow
 
 
 class MenuWindow(QWidget):
 
-    clicked = pyqtSignal()
+    clicked_menu_config_smartband = pyqtSignal()
+    clicked_menu_monitoring = pyqtSignal()
+    clicked_menu_config_core = pyqtSignal()
+    clicked_menu_about = pyqtSignal()
 
     def __open_config_smartband(self):
-        try:
-            self.clicked.emit("config")
-        except Exception as e:
-            print(e)
-
+        self.clicked_menu_config_smartband.emit()
 
     def __init_monitoring(self):
-       pass
+       self.clicked_menu_monitoring.emit()
 
     def __open_configure_core_application(self):
-        pass
+        self.clicked_menu_config_core.emit()
 
     def __open_about(self):
-        pass
+        self.clicked_menu_about = pyqtSignal()
 
     def __set_css_padrao_button(self, button):
         button.setStyleSheet("width: 120px; height: 120px; font-size:9px; font-weight: bold;text-transform:capitalize;")
