@@ -1,5 +1,4 @@
 from PyQt5.QtCore import QSize
-from PyQt5.QtGui import QWindow
 from PyQt5.QtWidgets import QStackedWidget, QMainWindow
 
 from windows.ConfigCoreApplicationWindow import ConfigCoreApplicationWindow

@@ -61,8 +61,8 @@ class ConfigSmartbandWindow(QWidget):
         self.input_name_device.setMaxLength(50)
 
         if self.data_config != None:
-            self.input_mac_device.setText(self.data_config[1])
-            self.input_name_device.setText(self.data_config[2])
+            self.input_mac_device.setText(self.data_config['MAC_ADDRESS'])
+            self.input_name_device.setText(self.data_config['NAME'])
 
         label_select_device = self.__get_new_label("Endereço MAC da pulseira:")
         label_name_device = self.__get_new_label("Nome da pulseira:")

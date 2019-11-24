@@ -1,7 +1,6 @@
 from PyQt5.QtCore import QSize, Qt, QMargins, pyqtSignal
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QToolButton, QGridLayout
-from windows.ConfigSmartbandWindow import ConfigSmartbandWindow
 
 
 class MenuWindow(QWidget):
