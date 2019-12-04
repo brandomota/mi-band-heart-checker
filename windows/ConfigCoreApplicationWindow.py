@@ -17,12 +17,13 @@ class ConfigCoreApplicationWindow(QWidget):
         self.__load_data()
 
     def __load_data(self):
-        self.data = self.__service.get_configuration_core_application()
-        if self.data is not None:
-            d = self.data['PHONE_NUMBER']
-            d2 = self.data['TIME_BETWEEN_CONSULTS']
-            self.input_phone.setText(self.data['PHONE_NUMBER'])
-            self.input_time_get_data_monitoring.setText(self.data['TIME_BETWEEN_CONSULTS'])
+        self.config_data = {}
+        data = self.__service.get_configuration_core_application()
+        self.config_data['ID'] = data['ID'] if data is not None else 0
+
+        if data is not None:
+            self.input_phone.setText(str(data['PHONE_NUMBER']))
+            self.input_time_get_data_monitoring.setText(str(data['TIME_BETWEEN_CONSULTS']))
 
     def __get_label_number_phone(self):
         label = QLabel()
@@ -61,18 +62,15 @@ class ConfigCoreApplicationWindow(QWidget):
         return label
 
     def __save_data(self):
-        data = {}
-        data['ID'] = self.data['ID'] if self.data is not None else 0
+        self.config_data['TIME_BETWEEN_CONSULTS'] = self.input_time_get_data_monitoring.text()
+        self.config_data['PHONE_NUMBER'] = self.input_phone.text()
 
-        data['TIME_BETWEEN_CONSULTS'] = self.input_time_get_data_monitoring.text()
-        data['PHONE_NUMBER'] = self.input_phone.text()
-
-        if len(data['PHONE_NUMBER']) == 0 or \
-                len(data['TIME_BETWEEN_CONSULTS']) == 0 or data['PHONE_NUMBER'] == 0:
+        if len(self.config_data['PHONE_NUMBER']) == 0 or \
+                len(self.config_data['TIME_BETWEEN_CONSULTS']) == 0 or self.config_data['PHONE_NUMBER'] == 0:
             QMessageBox.about(self, "Erro", "Dados são obrigatórios!")
 
         else:
-            self.__service.save_core_data(data)
+            self.__service.save_core_data(self.config_data)
             self.clicked.emit()
 
 

@@ -13,11 +13,9 @@ class QueriesService():
     def save_smartband_data(self,mac,name, id):
         try:
             if id == 0:
-                query = """INSERT INTO CONFIG_SMARTBAND (NAME, MAC_ADDRESS) VALUES('{name}', '{mac}');"""
-                query.format(name=name,mac=mac)
+                query = """INSERT INTO CONFIG_SMARTBAND (NAME, MAC_ADDRESS) VALUES('{name}', '{mac}');""".format(name=name,mac=mac)
             else:
-                query = """UPDATE CONFIG_SMARTBAND SET NAME = '{name}', MAC_ADDRESS = '{mac}' WHERE ID = {id}"""
-                query.format(name=name,mac=mac,id=id)
+                query = """UPDATE CONFIG_SMARTBAND SET NAME = '{name}', MAC_ADDRESS = '{mac}' WHERE ID ={id}""".format(name=name,mac=mac,id=id)
 
             self.__cursor.execute(query)
             self.__conn.commit()
@@ -40,9 +38,8 @@ class QueriesService():
 
     def save_core_data(self, data):
 
-        if 'ID' not in data:
-            query = """INSERT INTO CONFIG_CORE (PHONE_NUMBER, TIME_BETWEEN_CONSULTS) VALUES('{phone}', '{time}') """
-            query.format(phone=data['PHONE_NUMBER'],time=data['TIME_BETWEEN_CONSULTS'])
+        if data['ID'] == 0:
+            query = """INSERT INTO CONFIG_CORE (PHONE_NUMBER, TIME_BETWEEN_CONSULTS) VALUES('{phone}', '{time}') """.format(phone=data['PHONE_NUMBER'],time=data['TIME_BETWEEN_CONSULTS'])
         else:
             query = """UPDATE CONFIG_CORE SET PHONE_NUMBER = '{phone}', TIME_BETWEEN_CONSULTS = '{time}' WHERE ID = {id}""".format(phone=data['PHONE_NUMBER'],
                                                                                                                                    time=data['TIME_BETWEEN_CONSULTS'],
