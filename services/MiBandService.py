@@ -3,12 +3,12 @@ import time
 import logging
 from datetime import datetime
 from Crypto.Cipher import AES
-from Queue import Queue, Empty
+from queue import Queue, Empty
 from bluepy.btle import Peripheral, DefaultDelegate, ADDR_TYPE_RANDOM, BTLEException
 import os
 import struct
 
-from constants import UUIDS, AUTH_STATES, ALERT_TYPES, QUEUE_TYPES
+from utils.miConstants import UUIDS, AUTH_STATES, ALERT_TYPES, QUEUE_TYPES
 
 
 class AuthenticationDelegate(DefaultDelegate):
@@ -118,44 +118,8 @@ class MiBand3(Peripheral):
         self._char_auth.write(send_cmd)
         self.waitForNotifications(self.timeout)
 
-    def _parse_raw_accel(self, bytes):
-        res = []
-        for i in xrange(3):
-            g = struct.unpack('hhh', bytes[2 + i * 6:8 + i * 6])
-            res.append({'x': g[0], 'y': g[1], 'wtf': g[2]})
-        return res
-
     def _parse_raw_heart(self, bytes):
         res = struct.unpack('HHHHHHH', bytes[2:])
-        return res
-
-    def _parse_date(self, bytes):
-        year = struct.unpack('h', bytes[0:2])[0] if len(bytes) >= 2 else None
-        month = struct.unpack('b', bytes[2])[0] if len(bytes) >= 3 else None
-        day = struct.unpack('b', bytes[3])[0] if len(bytes) >= 4 else None
-        hours = struct.unpack('b', bytes[4])[0] if len(bytes) >= 5 else None
-        minutes = struct.unpack('b', bytes[5])[0] if len(bytes) >= 6 else None
-        seconds = struct.unpack('b', bytes[6])[0] if len(bytes) >= 7 else None
-        day_of_week = struct.unpack('b', bytes[7])[0] if len(bytes) >= 8 else None
-        fractions256 = struct.unpack('b', bytes[8])[0] if len(bytes) >= 9 else None
-
-        return {"date": datetime(*(year, month, day, hours, minutes, seconds)), "day_of_week": day_of_week, "fractions256": fractions256}
-
-    def _parse_battery_response(self, bytes):
-        level = struct.unpack('b', bytes[1])[0] if len(bytes) >= 2 else None
-        last_level = struct.unpack('b', bytes[19])[0] if len(bytes) >= 20 else None
-        status = 'normal' if struct.unpack('b', bytes[2])[0] == 0 else "charging"
-        datetime_last_charge = self._parse_date(bytes[11:18])
-        datetime_last_off = self._parse_date(bytes[3:10])
-
-        res = {
-            "status": status,
-            "level": level,
-            "last_level": last_level,
-            "last_level": last_level,
-            "last_charge": datetime_last_charge,
-            "last_off": datetime_last_off
-        }
         return res
 
     def _get_from_queue(self, _type):
@@ -177,8 +141,6 @@ class MiBand3(Peripheral):
                     self.heart_measure_callback(struct.unpack('bb', res[1])[1])
                 elif self.heart_raw_callback and _type == QUEUE_TYPES.RAW_HEART:
                     self.heart_raw_callback(self._parse_raw_heart(res[1]))
-                elif self.accel_raw_callback and _type == QUEUE_TYPES.RAW_ACCEL:
-                    self.accel_raw_callback(self._parse_raw_accel(res[1]))
             except Empty:
                 break
 
@@ -213,156 +175,6 @@ class MiBand3(Peripheral):
             self._log.error(self.state)
             return False
 
-    def get_battery_info(self):
-        char = self.svc_1.getCharacteristics(UUIDS.CHARACTERISTIC_BATTERY)[0]
-        return self._parse_battery_response(char.read())
-
-    def get_current_time(self):
-        char = self.svc_1.getCharacteristics(UUIDS.CHARACTERISTIC_CURRENT_TIME)[0]
-        return self._parse_date(char.read()[0:9])
-
-    def get_revision(self):
-        svc = self.getServiceByUUID(UUIDS.SERVICE_DEVICE_INFO)
-        char = svc.getCharacteristics(UUIDS.CHARACTERISTIC_REVISION)[0]
-        data = char.read()
-        return data
-
-    def get_hrdw_revision(self):
-        svc = self.getServiceByUUID(UUIDS.SERVICE_DEVICE_INFO)
-        char = svc.getCharacteristics(UUIDS.CHARACTERISTIC_HRDW_REVISION)[0]
-        data = char.read()
-        return data
-
-    def set_encoding(self, encoding="en_US"):
-        char = self.svc_1.getCharacteristics(UUIDS.CHARACTERISTIC_CONFIGURATION)[0]
-        packet = struct.pack('5s', encoding)
-        packet = b'\x06\x17\x00' + packet
-        return char.write(packet)
-
-    def set_heart_monitor_sleep_support(self, enabled=True, measure_minute_interval=1):
-        char_m = self.svc_heart.getCharacteristics(UUIDS.CHARACTERISTIC_HEART_RATE_MEASURE)[0]
-        char_d = char_m.getDescriptors(forUUID=UUIDS.NOTIFICATION_DESCRIPTOR)[0]
-        char_d.write(b'\x01\x00', True)
-        self._char_heart_ctrl.write(b'\x15\x00\x00', True)
-        # measure interval set to off
-        self._char_heart_ctrl.write(b'\x14\x00', True)
-        if enabled:
-            self._char_heart_ctrl.write(b'\x15\x00\x01', True)
-            # measure interval set
-            self._char_heart_ctrl.write(b'\x14' + str(measure_minute_interval).encode(), True)
-        char_d.write(b'\x00\x00', True)
-
-    def get_serial(self):
-        svc = self.getServiceByUUID(UUIDS.SERVICE_DEVICE_INFO)
-        char = svc.getCharacteristics(UUIDS.CHARACTERISTIC_SERIAL)[0]
-        data = char.read()
-        serial = struct.unpack('12s', data[-12:])[0] if len(data) == 12 else None
-        return serial
-
-    def get_steps(self):
-        char = self.svc_1.getCharacteristics(UUIDS.CHARACTERISTIC_STEPS)[0]
-        a = char.read()
-        steps = struct.unpack('h', a[1:3])[0] if len(a) >= 3 else None
-        meters = struct.unpack('h', a[5:7])[0] if len(a) >= 7 else None
-        fat_gramms = struct.unpack('h', a[2:4])[0] if len(a) >= 4 else None
-        # why only 1 byte??
-        callories = struct.unpack('b', a[9])[0] if len(a) >= 10 else None
-        return {
-            "steps": steps,
-            "meters": meters,
-            "fat_gramms": fat_gramms,
-            "callories": callories
-        }
-
-    def send_alert(self, _type):
-        svc = self.getServiceByUUID(UUIDS.SERVICE_ALERT)
-        char = svc.getCharacteristics(UUIDS.CHARACTERISTIC_ALERT)[0]
-        char.write(_type)
-
-    def send_custom_alert(self, type):
-        if type == 5:
-            base_value = '\x05\x01'
-        elif type == 4:
-            base_value = '\x04\x01'
-        elif type == 3:
-                base_value = '\x03\x01'
-        phone = raw_input('Sender Name or Caller ID')
-        svc = self.getServiceByUUID(UUIDS.SERVICE_ALERT_NOTIFICATION)
-        char = svc.getCharacteristics(UUIDS.CHARACTERISTIC_CUSTOM_ALERT)[0]
-        char.write(base_value+phone, withResponse=True)
-
-    def change_date(self):
-        print('Change date and time')
-        svc = self.getServiceByUUID(UUIDS.SERVICE_MIBAND1)
-        char = svc.getCharacteristics(UUIDS.CHARACTERISTIC_CURRENT_TIME)[0]
-        # date = raw_input('Enter the date in dd-mm-yyyy format\n')
-        # time = raw_input('Enter the time in HH:MM:SS format\n')
-        #
-        # day = int(date[:2])
-        # month = int(date[3:5])
-        # year = int(date[6:10])
-        # fraction = year / 256
-        # rem = year % 256
-        #
-        # hour = int(time[:2])
-        # minute = int(time[3:5])
-        # seconds =  int(time[6:])
-        #
-        # write_val =  format(rem, '#04x') + format(fraction, '#04x') + format(month, '#04x') + format(day, '#04x') + format(hour, '#04x') + format(minute, '#04x') + format(seconds, '#04x') + format(5, '#04x') + format(0, '#04x') + format(0, '#04x') +'0x16'
-        # write_val = write_val.replace('0x', '\\x')
-        # print(write_val)
-        char.write('\xe2\x07\x01\x1e\x00\x00\x00\x00\x00\x00\x16', withResponse=True)
-        raw_input('Date Changed, press any key to continue')
-    def dfuUpdate(self, fileName):
-        print('Update Firmware/Resource')
-        svc = self.getServiceByUUID(UUIDS.SERVICE_DFU_FIRMWARE)
-        char = svc.getCharacteristics(UUIDS.CHARACTERISTIC_DFU_FIRMWARE)[0]
-        extension = os.path.splitext(fileName)[1][1:]
-        fileSize = os.path.getsize(fileName)
-        # calculating crc checksum of firmware
-        #crc16
-        crc = 0xFFFF
-        with open(fileName) as f:
-            while True:
-                c = f.read(1)
-                if not c:
-                    break
-                cInt = int(c.encode('hex'), 16) #converting hex to int
-                # now calculate crc
-                crc = ((crc >> 8) | (crc << 8)) & 0xFFFF
-                crc ^= (cInt & 0xff)
-                crc ^= ((crc & 0xff) >> 4)
-                crc ^= (crc << 12) & 0xFFFF
-                crc ^= ((crc & 0xFF) << 5) & 0xFFFFFF
-        crc &= 0xFFFF
-        print('CRC Value is-->', crc)
-        raw_input('Press Enter to Continue')
-        if extension.lower() == "res":
-            # file size hex value is
-            char.write('\x01'+ struct.pack("<i", fileSize)[:-1] +'\x02', withResponse=True)
-        elif extension.lower() == "fw":
-            char.write('\x01' + struct.pack("<i", fileSize)[:-1], withResponse=True)
-        char.write("\x03", withResponse=True)
-        char1 = svc.getCharacteristics(UUIDS.CHARACTERISTIC_DFU_FIRMWARE_WRITE)[0]
-        with open(fileName) as f:
-          while True:
-            c = f.read(20) #takes 20 bytes :D
-            if not c:
-              print "Update Over"
-              break
-            print('Writing Resource', c.encode('hex'))
-            char1.write(c)
-        # after update is done send these values
-        char.write(b'\x00', withResponse=True)
-        self.waitForNotifications(0.5)
-        print('CheckSum is --> ', hex(crc & 0xFF), hex((crc >> 8) & 0xFF))
-        checkSum = b'\x04' + chr(crc & 0xFF) + chr((crc >> 8) & 0xFF)
-        char.write(checkSum, withResponse=True)
-        if extension.lower() == "fw":
-            self.waitForNotifications(0.5)
-            char.write('\x05', withResponse=True)
-        print('Update Complete')
-        raw_input('Press Enter to Continue')
     def start_raw_data_realtime(self, heart_measure_callback=None, heart_raw_callback=None, accel_raw_callback=None):
             char_m = self.svc_heart.getCharacteristics(UUIDS.CHARACTERISTIC_HEART_RATE_MEASURE)[0]
             char_d = char_m.getDescriptors(forUUID=UUIDS.NOTIFICATION_DESCRIPTOR)[0]
