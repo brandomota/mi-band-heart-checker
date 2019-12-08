@@ -1,14 +1,11 @@
-import struct
 import time
 import logging
-from datetime import datetime
 from Crypto.Cipher import AES
 from queue import Queue, Empty
-from bluepy.btle import Peripheral, DefaultDelegate, ADDR_TYPE_RANDOM, BTLEException
-import os
+from bluepy.btle import Peripheral, DefaultDelegate, ADDR_TYPE_RANDOM
 import struct
 
-from utils.miConstants import UUIDS, AUTH_STATES, ALERT_TYPES, QUEUE_TYPES
+from utils.miConstants import UUIDS, AUTH_STATES, QUEUE_TYPES
 
 
 class AuthenticationDelegate(DefaultDelegate):
@@ -39,7 +36,6 @@ class AuthenticationDelegate(DefaultDelegate):
         elif hnd == self.device._char_heart_measure.getHandle():
             self.device.queue.put((QUEUE_TYPES.HEART, data))
         elif hnd == 0x38:
-            # Not sure about this, need test
             if len(data) == 20 and struct.unpack('b', data[0])[0] == 1:
                 self.device.queue.put((QUEUE_TYPES.RAW_ACCEL, data))
             elif len(data) == 16:
@@ -49,7 +45,7 @@ class AuthenticationDelegate(DefaultDelegate):
                                    str(data.encode("hex")) + " len:" + str(len(data)))
 
 
-class MiBand3(Peripheral):
+class MiBandService(Peripheral):
     _KEY = b'\x01\x23\x45\x67\x89\x01\x22\x23\x34\x45\x56\x67\x78\x89\x90\x02'
     _send_key_cmd = struct.pack('<18s', b'\x01\x08' + _KEY)
     _send_rnd_cmd = struct.pack('<2s', b'\x02\x08')
@@ -175,76 +171,18 @@ class MiBand3(Peripheral):
             self._log.error(self.state)
             return False
 
-    def start_raw_data_realtime(self, heart_measure_callback=None, heart_raw_callback=None, accel_raw_callback=None):
-            char_m = self.svc_heart.getCharacteristics(UUIDS.CHARACTERISTIC_HEART_RATE_MEASURE)[0]
-            char_d = char_m.getDescriptors(forUUID=UUIDS.NOTIFICATION_DESCRIPTOR)[0]
-            char_ctrl = self.svc_heart.getCharacteristics(UUIDS.CHARACTERISTIC_HEART_RATE_CONTROL)[0]
+    def get_heart_rate_one_time(self):
+        # stop continous
+        self._char_heart_ctrl.write(b'\x15\x01\x00', True)
+        # stop manual
+        self._char_heart_ctrl.write(b'\x15\x02\x00', True)
+        # start manual
+        self._char_heart_ctrl.write(b'\x15\x02\x01', True)
+        res = None
+        while not res:
+            self.waitForNotifications(self.timeout)
+            res = self._get_from_queue(QUEUE_TYPES.HEART)
 
-            if heart_measure_callback:
-                self.heart_measure_callback = heart_measure_callback
-            if heart_raw_callback:
-                self.heart_raw_callback = heart_raw_callback
-            if accel_raw_callback:
-                self.accel_raw_callback = accel_raw_callback
-
-            char_sensor = self.svc_1.getCharacteristics(UUIDS.CHARACTERISTIC_SENSOR)[0]
-
-            # stop heart monitor continues & manual
-            char_ctrl.write(b'\x15\x02\x00', True)
-            char_ctrl.write(b'\x15\x01\x00', True)
-            # WTF
-            # char_sens_d1.write(b'\x01\x00', True)
-            # enabling accelerometer & heart monitor raw data notifications
-            char_sensor.write(b'\x01\x03\x19')
-            # IMO: enablee heart monitor notifications
-            char_d.write(b'\x01\x00', True)
-            # start hear monitor continues
-            char_ctrl.write(b'\x15\x01\x01', True)
-            # WTF
-            char_sensor.write(b'\x02')
-            t = time.time()
-            while True:
-                self.waitForNotifications(0.5)
-                self._parse_queue()
-                # send ping request every 12 sec
-                if (time.time() - t) >= 12:
-                    char_ctrl.write(b'\x16', True)
-                    t = time.time()
-
-    def stop_realtime(self):
-            char_m = self.svc_heart.getCharacteristics(UUIDS.CHARACTERISTIC_HEART_RATE_MEASURE)[0]
-            char_d = char_m.getDescriptors(forUUID=UUIDS.NOTIFICATION_DESCRIPTOR)[0]
-            char_ctrl = self.svc_heart.getCharacteristics(UUIDS.CHARACTERISTIC_HEART_RATE_CONTROL)[0]
-
-            char_sensor1 = self.svc_1.getCharacteristics(UUIDS.CHARACTERISTIC_HZ)[0]
-            char_sens_d1 = char_sensor1.getDescriptors(forUUID=UUIDS.NOTIFICATION_DESCRIPTOR)[0]
-
-            char_sensor2 = self.svc_1.getCharacteristics(UUIDS.CHARACTERISTIC_SENSOR)[0]
-
-            # stop heart monitor continues
-            char_ctrl.write(b'\x15\x01\x00', True)
-            char_ctrl.write(b'\x15\x01\x00', True)
-            # IMO: stop heart monitor notifications
-            char_d.write(b'\x00\x00', True)
-            # WTF
-            char_sensor2.write(b'\x03')
-            # IMO: stop notifications from sensors
-            char_sens_d1.write(b'\x00\x00', True)
-
-            self.heart_measure_callback = None
-            self.heart_raw_callback = None
-            self.accel_raw_callback = None
-
-    def start_get_previews_data(self, start_timestamp):
-            self._auth_previews_data_notif(True)
-            self.waitForNotifications(0.1)
-            print("Trigger activity communication")
-            year = struct.pack("<H", start_timestamp.year)
-            month = struct.pack("<H", start_timestamp.month)[0]
-            day = struct.pack("<H", start_timestamp.day)[0]
-            hour = struct.pack("<H", start_timestamp.hour)[0]
-            minute = struct.pack("<H", start_timestamp.minute)[0]
-            ts = year + month + day + hour + minute
-            trigger = b'\x01\x01' + ts + b'\x00\x08'
-            self._char_fetch.write(trigger, False)
-            self.active = True
+        rate = struct.unpack('bb', res)[1]
+        print("rate "+rate)
+        return rate

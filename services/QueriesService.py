@@ -2,7 +2,7 @@ import io, sqlite3
 
 class QueriesService():
     def __init__(self):
-        self.__conn = sqlite3.connect("data.db")
+        self.__conn = sqlite3.connect("data.db",timeout=3)
         self.__conn.row_factory = sqlite3.Row
         self.__cursor = self.__conn.cursor()
 
@@ -47,3 +47,13 @@ class QueriesService():
 
         self.__cursor.execute(query)
         self.__conn.commit()
+
+    def get_mac_address(self):
+        query = """SELECT MAC_ADDRESS FROM CONFIG_SMARTBAND"""
+        self.__cursor.execute(query)
+        return self.__cursor.fetchone()['MAC_ADDRESS']
+
+    def get_time_sleep_check(self):
+        query = """SELECT TIME_BETWEEN_CONSULTS FROM CONFIG_CORE"""
+        self.__cursor.execute(query)
+        return self.__cursor.fetchone()['TIME_BETWEEN_CONSULTS']
